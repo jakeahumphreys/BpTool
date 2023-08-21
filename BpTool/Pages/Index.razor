@@ -7,7 +7,8 @@
 <MudGrid>
      <MudItem xs="12">
         <MudPaper Class="d-flex align-center justify-center mud-width-full py-8 mb-3">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Export">Export</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Export" Class="m-2">Export</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ClearData" Class="m-2">Clear Data</MudButton>
         </MudPaper>
     </MudItem>
     <MudItem xs="6">
@@ -139,5 +140,13 @@
         {
             PdfGenerator.SavePdf(bloodPressureRecords);
         }
+    }
+
+    private void ClearData()
+    {
+        bloodPressureRecordRepository.Clear();
+        bloodPressureRecords.Clear();
+        PlotGraph();
+        StateHasChanged();
     }
 }

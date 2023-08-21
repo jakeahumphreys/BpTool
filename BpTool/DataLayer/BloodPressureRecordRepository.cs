@@ -22,4 +22,9 @@ public sealed class BloodPressureRecordRepository
         var jsonString = JsonConvert.SerializeObject(bloodPressureRecords, Formatting.Indented);
         File.WriteAllText(FilePath.GetDataFilePath(), jsonString);
     }
+
+    public void Clear()
+    {
+        File.WriteAllText(FilePath.GetDataFilePath(), "");
+    }
 }
