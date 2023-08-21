@@ -1,0 +1,143 @@
+﻿@page "/"
+@using BpTool.Types
+@using Microsoft.AspNetCore.Components.Forms
+@using BpTool.DataLayer
+@using BpTool.Utility
+
+<MudGrid>
+     <MudItem xs="12">
+        <MudPaper Class="d-flex align-center justify-center mud-width-full py-8 mb-3">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Export">Export</MudButton>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6">
+        <MudItem xs="12">
+            <EditForm Model="@model" OnValidSubmit="OnValidSubmit">
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudCard>
+                            <MudCardContent>
+                                <MudTextField Label="Systolic" HelperText="Top Number"
+                                              @bind-Value="model.Systolic" For="@(() => model.Systolic)"/>
+                                <MudTextField Label="Diastolic" HelperText="Bottom Number" Class="mt-3"
+                                              @bind-Value="model.Diastolic" For="@(() => model.Diastolic)"/>
+                            </MudCardContent>
+                            <MudCardActions>
+                                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Add</MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                </MudGrid>
+            </EditForm>
+        </MudItem>
+    </MudItem>
+    <MudItem xs="6">
+        <MudChart ChartType="ChartType.Line" ChartSeries="Series" XAxisLabels="XAxisLabels.ToArray()"></MudChart>
+    </MudItem>
+    <MudItem xs="12">
+        <MudTable Items="bloodPressureRecords" Hover="true" FixedHeader="true" Height="400px" Class="mb-3">
+            <HeaderContent>
+                <MudTh>Time</MudTh>
+                <MudTh>Systolic</MudTh>
+                <MudTh>Diastolic</MudTh>
+                <MudTh>Classification</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Time">@context.TimeStamp.ToString("dd/MM/yyyy HH:mm")</MudTd>
+                <MudTd DataLabel="Systolic">@context.Systolic</MudTd>
+                <MudTd DataLabel="Diastolic">@context.Diastolic</MudTd>
+                <MudTd DataLabel="Diastolic">
+                    <MudChip Color="@GetClassificationColour(context.BloodPressureClassification)">@context.BloodPressureClassification</MudChip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudItem>
+</MudGrid>
+
+@code
+{
+
+    [Inject] 
+    BloodPressureRecordRepository bloodPressureRecordRepository { get; set; }
+    
+    BloodPressureRecordViewModel model = new BloodPressureRecordViewModel();
+    List<BloodPressureRecord> bloodPressureRecords = new List<BloodPressureRecord>();
+    
+    List<ChartSeries> Series = new List<ChartSeries>();
+    List<string> XAxisLabels = new List<string>();
+
+    protected override void OnInitialized()
+    {
+        bloodPressureRecords = bloodPressureRecordRepository.GetAll();
+        PlotGraph();
+    }
+
+    private void PlotGraph()
+    {
+        Series.Clear();
+        XAxisLabels.Clear();
+        
+        Series.Add(new ChartSeries
+        {
+            Name = "Systolic",
+            Data = bloodPressureRecords.Select(x => (double)x.Systolic).ToArray()
+        });
+        
+        Series.Add(new ChartSeries
+        {
+            Name = "Diastolic",
+            Data = bloodPressureRecords.Select(x => (double)x.Diastolic).ToArray()
+        });
+
+        foreach (var record in bloodPressureRecords)
+        {
+            XAxisLabels.Add(record.TimeStamp.ToString("dd/MM/yyyy HH:mm"));
+        }
+    }
+
+    private void OnValidSubmit()
+    {
+        var bloodPressureRecord = new BloodPressureRecord
+        {
+            Id = Guid.NewGuid(),
+            TimeStamp = DateTime.Now,
+            Diastolic = model.Diastolic,
+            Systolic = model.Systolic,
+            BloodPressureClassification = BloodPressureCalculator.Get(model.Systolic, model.Diastolic)
+        };
+
+        bloodPressureRecords.Add(bloodPressureRecord);
+        
+        bloodPressureRecordRepository.Save(bloodPressureRecords);
+        
+        PlotGraph();
+        StateHasChanged();
+    }
+
+    private Color GetClassificationColour(string classification)
+    {
+        switch (classification)
+        {
+            case BloodPressureClassification.LOW:
+                return Color.Info;
+            case BloodPressureClassification.NORMAL:
+                return Color.Success;
+            case BloodPressureClassification.ELEVATED:
+                return Color.Warning;
+            case BloodPressureClassification.HIGH_STAGE_1:
+                return Color.Error;
+            case BloodPressureClassification.HIGH_STAGE_2:
+                return Color.Dark;
+            default:
+                return Color.Tertiary;
+        }
+    }
+
+    private void Export()
+    {
+        if (bloodPressureRecords.Count > 0)
+        {
+            PdfGenerator.SavePdf(bloodPressureRecords);
+        }
+    }
+}
